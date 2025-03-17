@@ -38,6 +38,7 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            scroll-behavior: smooth;
         }
         .chat-message {
             background: #007bff;
@@ -79,6 +80,9 @@
             border-radius: 5px;
             cursor: pointer;
         }
+        .chat-input button:hover {
+            background: #0056b3;
+        }
         @media (max-width: 480px) {
             .chat-container {
                 width: 100%;
@@ -93,7 +97,7 @@
         <div class="chat-header">SoulSync</div>
         <div class="chat-box" id="chatBox"></div>
         <div class="chat-input">
-            <input type="text" id="userInput" placeholder="Type a message...">
+            <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
             <button onclick="sendMessage()">Send</button>
         </div>
     </div>
@@ -101,14 +105,18 @@
     <script>
         let chatHistory = [];
 
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchChatHistory(); // Load chat history on page load
+        });
+
         async function sendMessage() {
             var inputField = document.getElementById("userInput");
             var message = inputField.value.trim();
             if (message === "") return;
-            
+
             addMessage(message, "user");
             inputField.value = "";
-            
+
             try {
                 let response = await fetch("http://127.0.0.1:5000/chat", {
                     method: "POST",
@@ -117,11 +125,25 @@
                     },
                     body: JSON.stringify({ message: message })
                 });
+
                 let data = await response.json();
                 addMessage(data.response, "agent");
             } catch (error) {
                 console.error("Error fetching response: ", error);
                 addMessage("Error connecting to AI service.", "agent");
+            }
+        }
+
+        async function fetchChatHistory() {
+            try {
+                let response = await fetch("http://127.0.0.1:5000/history");
+                let history = await response.json();
+                history.forEach(chat => {
+                    addMessage(chat.user_message, "user");
+                    addMessage(chat.ai_response, "agent");
+                });
+            } catch (error) {
+                console.error("Error fetching chat history: ", error);
             }
         }
 
@@ -133,6 +155,12 @@
             chatBox.appendChild(messageElement);
             chatBox.scrollTop = chatBox.scrollHeight;
             chatHistory.push({ sender, message });
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
         }
     </script>
 </body>
