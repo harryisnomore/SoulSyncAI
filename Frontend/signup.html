@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup - SoulSync</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .signup-container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .signup-container h2 {
+            margin-bottom: 20px;
+        }
+        .signup-container input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .signup-container button {
+            background: #007bff;
+            color: white; 
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        @media (max-width: 480px) {
+            .signup-container {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <h2>Signup to SoulSync</h2>
+        <input type="text" id="firstName" placeholder="First Name">
+        <input type="text" id="lastName" placeholder="Last Name">
+        <input type="date" id="dob" placeholder="Date of Birth" pattern="\d{2}/\d{2}/\d{4}">
+        <input type="email" id="email" placeholder="Email ID">
+        <input type="password" id="password" placeholder="Password">
+        <input type="password" id="confirmPassword" placeholder="Confirm Password">
+        <button onclick="signup()">Signup</button>
+    </div>
+    
+    <script>
+        function signup() {
+            let firstName = document.getElementById("firstName").value;
+            let lastName = document.getElementById("lastName").value;
+            let dob = document.getElementById("dob").value;
+            let email = document.getElementById("email").value;
+            let password = document.getElementById("password").value;
+            let confirmPassword = document.getElementById("confirmPassword").value;
+            
+            if (!firstName || !lastName || !dob || !email || !password || !confirmPassword) {
+                alert("Please fill out all fields.");
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                alert("Passwords do not match.");
+                return;
+            }
+            
+            localStorage.setItem("firstName", firstName);
+            localStorage.setItem("lastName", lastName);
+            localStorage.setItem("dob", dob);
+            localStorage.setItem("email", email);
+            localStorage.setItem("password", password);
+            
+            window.location.href = "index.html";
+        }
+    </script>
+</body>
+</html>
