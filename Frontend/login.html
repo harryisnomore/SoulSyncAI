@@ -3,96 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SoulSync AI</title>
+    <title>Login - SoulSync</title>
     <style>
         body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(to right, #6a11cb, #2575fc);
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            flex-direction: column;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-            max-width: 400px;
-            width: 100%;
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        h1 {
-            color: #333;
+        .login-container h2 {
             margin-bottom: 20px;
-            font-size: 24px;
         }
-        .input-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .input-group label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #555;
-        }
-        .input-group input {
+        .login-container input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 16px;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: border 0.3s ease-in-out;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
-        .input-group input:focus {
-            border-color: #6a11cb;
-            outline: none;
-        }
-        .btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            background: #6a11cb;
+        .login-container button {
+            background: #007bff;
             color: white;
-            font-weight: 600;
-            transition: background 0.3s ease-in-out;
-        }
-        .btn:hover {
-            background: #4e0eb7;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 5px;
+            cursor: pointer;
         }
         @media (max-width: 480px) {
-            .container {
+            .login-container {
                 width: 90%;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Login to SoulSync AI</h1>
-        <form>
-            <div class="input-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-            <div class="input-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <button type="submit" class="btn">Login</button>
-        </form>
+    <div class="login-container">
+        <h2>Login to SoulSync</h2>
+        <input type="email" id="email" placeholder="Email ID">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p>Don't have an account? <a href="signup.html">Sign up</a></p>
     </div>
+
+    <script>
+        async function login() {
+            let email = document.getElementById("email").value;
+            let password = document.getElementById("password").value;
+
+            if (!email || !password) {
+                alert("Please fill out all fields.");
+                return;
+            }
+
+            const loginData = { email, password };
+
+            try {
+                let response = await fetch("http://127.0.0.1:5000/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(loginData)
+                });
+
+                let data = await response.json();
+                if (data.user_id) {
+                    localStorage.setItem("user_id", data.user_id);
+                    alert("Login successful!");
+                    window.location.href = "index.html";
+                } else {
+                    alert("Login failed: " + data.error);
+                }
+            } catch (error) {
+                console.error("Login error:", error);
+                alert("An error occurred during login.");
+            }
+        }
+    </script>
 </body>
 </html>

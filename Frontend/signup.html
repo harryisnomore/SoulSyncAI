@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Signup - SoulSync</title>
     <style>
+    
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
@@ -47,6 +48,7 @@
                 width: 90%;
             }
         }
+    
     </style>
 </head>
 <body>
@@ -54,39 +56,55 @@
         <h2>Signup to SoulSync</h2>
         <input type="text" id="firstName" placeholder="First Name">
         <input type="text" id="lastName" placeholder="Last Name">
-        <input type="date" id="dob" placeholder="Date of Birth" pattern="\d{2}/\d{2}/\d{4}">
+        <input type="date" id="dob" placeholder="Date of Birth">
         <input type="email" id="email" placeholder="Email ID">
         <input type="password" id="password" placeholder="Password">
         <input type="password" id="confirmPassword" placeholder="Confirm Password">
         <button onclick="signup()">Signup</button>
+        <!-- ADDED: Link to login page -->
+        <p>Already have an account? <a href="login.html">Log in</a></p>
     </div>
     
     <script>
-        function signup() {
+        async function signup() {
             let firstName = document.getElementById("firstName").value;
             let lastName = document.getElementById("lastName").value;
             let dob = document.getElementById("dob").value;
             let email = document.getElementById("email").value;
             let password = document.getElementById("password").value;
             let confirmPassword = document.getElementById("confirmPassword").value;
-            
+
             if (!firstName || !lastName || !dob || !email || !password || !confirmPassword) {
                 alert("Please fill out all fields.");
                 return;
             }
-            
+
             if (password !== confirmPassword) {
                 alert("Passwords do not match.");
                 return;
             }
-            
-            localStorage.setItem("firstName", firstName);
-            localStorage.setItem("lastName", lastName);
-            localStorage.setItem("dob", dob);
-            localStorage.setItem("email", email);
-            localStorage.setItem("password", password);
-            
-            window.location.href = "index.html";
+
+            const signupData = { firstName, lastName, dob, email, password };
+
+            try {
+                let response = await fetch("http://127.0.0.1:5000/signup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(signupData)
+                });
+
+                let data = await response.json();
+                if (data.user_id) {
+                    localStorage.setItem("user_id", data.user_id);
+                    alert("Signup successful!");
+                    window.location.href = "index.html";
+                } else {
+                    alert("Signup failed: " + data.error);
+                }
+            } catch (error) {
+                console.error("Signup error:", error);
+                alert("An error occurred during signup.");
+            }
         }
     </script>
 </body>
