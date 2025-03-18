@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -19,42 +19,42 @@
     <script>
         const userId = localStorage.getItem("user_id");
 
-        // CHANGED: Redirect to login.html instead of signup.html
         if (!userId) {
             alert("Please log in first!");
             window.location.href = "login.html";
         }
 
         async function sendMessage() {
-            let inputField = document.getElementById("userInput");
-            let message = inputField.value.trim();
-            if (message === "") return;
+            const inputField = document.getElementById("userInput");
+            const message = inputField.value.trim();
+            if (!message) return;
 
             addMessage(message, "user");
             inputField.value = "";
 
             try {
-                let response = await fetch("http://127.0.0.1:5000/chat", {
+                const response = await fetch("http://127.0.0.1:5000/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ user_id: userId, message: message })
+                    body: JSON.stringify({ user_id: userId, message })
                 });
 
-                let data = await response.json();
-                if (data.response) {
-                    addMessage(data.response, "agent");
+                const data = await response.json();
+                if (response.ok) {
+                    addMessage(data.response || "No response from server.", "agent");
                 } else {
-                    addMessage("Sorry, something went wrong. Try again!", "agent");
+                    addMessage(`Server error: ${data.error || "Unknown error"}`, "agent");
+                    console.error("Server response:", data);
                 }
             } catch (error) {
-                console.error("Error fetching response:", error);
-                addMessage("Oops! Something went wrong. Please try again.", "agent");
+                console.error("Fetch error:", error);
+                addMessage(`Network error: ${error.message}. Please check your connection and try again.`, "agent");
             }
         }
 
         function addMessage(message, sender) {
-            let chatBox = document.getElementById("chatBox");
-            let messageElement = document.createElement("div");
+            const chatBox = document.getElementById("chatBox");
+            const messageElement = document.createElement("div");
             messageElement.classList.add(sender === "user" ? "chat-message" : "agent-message");
             messageElement.innerText = message;
             chatBox.appendChild(messageElement);
@@ -68,4 +68,103 @@
         }
     </script>
 </body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOULSYNC</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .agent-message {
+            background: #e9ecef;
+            text-align: left;
+            margin-right: 20%;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .agent-message .agent-name {
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container" id="chatContainer">
+        <div class="chat-header">SoulSync</div>
+        <div class="chat-box" id="chatBox"></div>
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const userId = localStorage.getItem("user_id");
+
+        if (!userId) {
+            alert("Please log in first!");
+            window.location.href = "login.html";
+        }
+
+        async function sendMessage() {
+            const inputField = document.getElementById("userInput");
+            const message = inputField.value.trim();
+            if (!message) return;
+
+            addMessage(message, "user");
+            inputField.value = "";
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id: userId, message })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    const agentName = data.agent ? formatAgentName(data.agent) : "Unknown Agent";
+                    addMessage(`${agentName}: ${data.response || "No response from server."}`, "agent");
+                } else {
+                    addMessage(`Server error: ${data.error || "Unknown error"}`, "agent");
+                    console.error("Server response:", data);
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+                addMessage(`Network error: ${error.message}. Please check your connection and try again.`, "agent");
+            }
+        }
+
+        function formatAgentName(agent) {
+            // Convert agent name to a more readable format (e.g., "therapy_plan_agent" -> "Therapy Plan Agent")
+            return agent
+                .replace("_agent", "")
+                .split("_")
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ") + " Agent";
+        }
+
+        function addMessage(message, sender) {
+            const chatBox = document.getElementById("chatBox");
+            const messageElement = document.createElement("div");
+            messageElement.classList.add(sender === "user" ? "chat-message" : "agent-message");
+            messageElement.innerHTML = sender === "agent" ? `<span class="agent-name">${message.split(":")[0]}</span>: ${message.split(":").slice(1).join(":")}` : message;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
 </html>
+
+
