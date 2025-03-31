@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -17,11 +17,33 @@
     </div>
 
     <script>
+
         const userId = localStorage.getItem("user_id");
 
         if (!userId) {
             alert("Please log in first!");
             window.location.href = "login.html";
+        }
+        else{
+            sendWelcomeMessage();
+        }
+
+        async function sendWelcomeMessage() {
+            try {
+                const response = await fetch("http://127.0.0.1:5000/welcome", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    addMessage(`${data.response}`, "agent");
+                } else {
+                    console.error("Server error:", data.error);
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+            }
         }
 
         async function sendMessage() {
@@ -77,4 +99,153 @@
 </body>
 </html>
 
+ -->
 
+
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>SOULSYNC</title>
+     <link rel="stylesheet" href="style.css">
+ </head>
+ <body>
+     <div class="chat-container">
+         <div class="chat-header">SoulSync</div>
+         <div class="chat-box" id="chatBox"></div>
+         <div class="chat-input">
+             <!-- Add a plus icon to trigger file upload -->
+             <label for="pdfUpload" class="upload-btn" title="Upload a PDF" aria-label="Upload a PDF file">
+                 <span class="plus-icon">+</span>
+             </label>
+             <input type="file" id="pdfUpload" accept=".pdf" onchange="handleFileUpload(event)" style="display: none;">
+             <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+             <button onclick="sendMessage()">Send</button>
+         </div>
+     </div>
+ 
+     <script>
+         const userId = localStorage.getItem("user_id");
+ 
+         if (!userId) {
+             alert("Please log in first!");
+             window.location.href = "login.html";
+         } else {
+             sendWelcomeMessage();
+         }
+ 
+         async function sendWelcomeMessage() {
+             try {
+                 const response = await fetch("http://127.0.0.1:5000/welcome", {
+                     method: "POST",
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify({ user_id: userId })
+                 });
+                 const data = await response.json();
+                 if (response.ok) {
+                     addMessage(`${data.response}`, "agent");
+                 } else {
+                     console.error("Server error:", data.error);
+                 }
+             } catch (error) {
+                 console.error("Fetch error:", error);
+             }
+         }
+ 
+         async function sendMessage() {
+             const inputField = document.getElementById("userInput");
+             const message = inputField.value.trim();
+             if (!message) return;
+ 
+             addMessage(message, "user");
+             inputField.value = "";
+ 
+             try {
+                 const response = await fetch("http://127.0.0.1:5000/chat", {
+                     method: "POST",
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify({ user_id: userId, message })
+                 });
+ 
+                 const data = await response.json();
+                 if (response.ok) {
+                     const agentName = data.agent_used ? formatAgentName(data.agent_used) : "Unknown Agent";
+                     addMessage(`<span class="agent-name">${agentName}</span>: ${data.response || "No response from server."}`, "agent");
+                 } else {
+                     addMessage(`Server error: ${data.error || "Unknown error"}`, "agent");
+                     console.error("Server response:", data);
+                 }
+             } catch (error) {
+                 console.error("Fetch error:", error);
+                 addMessage(`Network error: ${error.message}. Please check your connection and try again.`, "agent");
+             }
+         }
+ 
+         async function handleFileUpload(event) {
+             const file = event.target.files[0];
+             if (!file) return;
+ 
+             if (file.type !== "application/pdf") {
+                 addMessage("Please upload only PDF files.", "agent");
+                 return;
+             }
+ 
+             addMessage(`Uploading: ${file.name}`, "user");
+ 
+             // Disable the upload button and show a loading state
+             const uploadBtn = document.querySelector(".upload-btn");
+             uploadBtn.classList.add("loading");
+             uploadBtn.disabled = true;
+ 
+             const formData = new FormData();
+             formData.append("file", file);
+             formData.append("user_id", userId);
+ 
+             try {
+                 const response = await fetch("http://127.0.0.1:5000/upload_pdf", {
+                     method: "POST",
+                     body: formData
+                 });
+ 
+                 const data = await response.json();
+                 if (response.ok) {
+                     addMessage(`PDF uploaded successfully: ${data.message}`, "agent");
+                 } else {
+                     addMessage(`Upload error: ${data.error || "Unknown error"}`, "agent");
+                     console.error("Server response:", data);
+                 }
+             } catch (error) {
+                 console.error("Upload error:", error);
+                 addMessage(`Upload failed: ${error.message}. Please try again.`, "agent");
+             } finally {
+                 // Re-enable the upload button
+                 uploadBtn.classList.remove("loading");
+                 uploadBtn.disabled = false;
+                 document.getElementById("pdfUpload").value = "";
+             }
+         }
+ 
+         function formatAgentName(agent) {
+             return agent
+                 .replace(/_/g, " ") // Replace underscores with spaces
+                 .replace(/\b\w/g, letter => letter.toUpperCase()); // Capitalize first letters
+         }
+ 
+         function addMessage(message, sender) {
+             const chatBox = document.getElementById("chatBox");
+             const messageElement = document.createElement("div");
+             messageElement.classList.add(sender === "user" ? "chat-message" : "agent-message");
+             messageElement.innerHTML = message;
+             chatBox.appendChild(messageElement);
+             chatBox.scrollTop = chatBox.scrollHeight;
+         }
+ 
+         function handleKeyPress(event) {
+             if (event.key === "Enter") {
+                 sendMessage();
+             }
+         }
+     </script>
+ </body>
+ </html>

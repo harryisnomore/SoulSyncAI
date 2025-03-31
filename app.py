@@ -554,37 +554,82 @@ def wellness_agent(state: AgentState) -> AgentState:
     }
 
 def therapy_agent(state: AgentState) -> AgentState:
-    # Find the most recent user message
+    """
+    An adaptive therapy planning agent for SoulSync AI.
+    Focuses on:
+    1. Crafting personalized therapy plans based on user input and history.
+    2. Offering actionable, context-sensitive recommendations.
+    3. Setting realistic, user-aligned goals for relief and growth.
+    4. Providing supportive, trust-building communication.
+    """
+    logger.info(f"[THERAPY_AGENT] Processing state for user_id={state['user_id']}")
+
+    # Extract the latest user message
     user_message = None
     for message in reversed(state["messages"]):
         if message["role"] == "user":
-            user_message = message["content"]
+            user_message = message["content"].lower().strip()
             break
     
-    if user_message is None:
-        logger.warning(f"therapy_agent: No user message found in messages for user_id={state['user_id']}")
-        return state
+    if not user_message:
+        logger.warning(f"therapy_agent: No user message found for user_id={state['user_id']}")
+        response = "I couldn’t find your latest message—could you share what’s on your mind?"
+        return {
+            "messages": state["messages"] + [{"role": "assistant", "content": response, "agent_name": "personalized_therapy_agent"}],
+            "user_id": state["user_id"],
+            "next_agent": "personalized_therapy_agent",
+            "context": state.get("context", {})
+        }
 
     user_id = state["user_id"]
     context = state.get("context", {})
 
+    # Fetch user data with fallback
+    try:
+        user_data = get_user_data(user_id) or "No prior user data available."
+    except Exception as e:
+        logger.error(f"therapy_agent: Failed to get user data for user_id={user_id}: {str(e)}", exc_info=True)
+        user_data = "User data unavailable due to a glitch—we’ll work with what you tell me now."
+
+    # Build conversation context
+    recent_history = state["messages"][-5:]
+    conversation_summary = "\n".join([f"{m['role']}: {m['content']}" for m in recent_history])
+    full_context = f"User History: {user_data}\nRecent Conversation:\n{conversation_summary}\nCurrent Message: {user_message}"
+
+    # System prompt for natural, adaptive reasoning
     system_prompt = """
-    You are the Therapy Planning specialist of SoulSync AI.
-    Focus on:
-    1. Creating personalized therapy plans
-    2. Providing actionable recommendations
-    3. Setting realistic goals
-    4. Maintaining supportive communication
+    You are the Therapy Planning specialist of SoulSync AI. Your role is to deeply understand the user’s emotional state, needs, and context, then craft a personalized therapy plan. Focus on:
+    - Personalization: Tailor the plan to the user’s unique situation, drawing from their history and current input.
+    - Actionable steps: Suggest practical, specific actions they can take now.
+    - Realistic goals: Set short-term wins and long-term growth targets that feel achievable.
+    - Supportive tone: Build trust with warm, empathetic communication.
+    Interpret the user’s intent and emotions naturally—don’t rely on rigid rules or keywords. If the user seems to want a different focus (e.g., wellness, rehab), flag it. Respond with a therapy plan and a conversational message.
     """
 
-    # Check if the user wants to switch intents
-    intent_check_prompt = f"Analyze this message: {user_message}\nDoes the user want to switch to a different intent (e.g., wellness, rehab, general)? Respond with 'Yes' or 'No'."
-    intent_switch = invoke_azure_openai(
-        [{"role": "user", "content": intent_check_prompt}],
-        "Determine if the user wants to switch intents."
-    )
-    if "Yes" in intent_switch:
-        response = "I understand, let’s switch gears. I’ll pass you back to the main chat agent to assist with your request."
+    # Generate the therapy plan dynamically
+    messages = [{"role": "user", "content": full_context}]
+    therapy_response = invoke_azure_openai(messages, system_prompt)
+
+    # Parse the response (assuming it’s structured naturally by the AI, e.g., plan + message)
+    try:
+        # For simplicity, assume therapy_response contains both plan and user message; in practice, you might split these via AI or formatting
+        if "therapy plan" not in therapy_response.lower():
+            therapy_plan = therapy_response  # Fallback: treat the whole response as the plan
+            user_message_response = "Here’s a plan I’ve put together for you—let me know how it feels or if you’d like to tweak it!"
+        else:
+            # Split if the AI naturally separates plan and message (e.g., with a delimiter or clear sections)
+            plan_start = therapy_response.lower().index("therapy plan")
+            therapy_plan = therapy_response[plan_start:]
+            user_message_response = therapy_response[:plan_start].strip() or "Here’s your therapy plan—how does it sit with you?"
+    except Exception as e:
+        logger.error(f"therapy_agent: Error parsing therapy response: {str(e)}")
+        therapy_plan = therapy_response
+        user_message_response = "I’ve got a plan for you—let’s see if it fits!"
+
+    # Check for intent shift organically
+    if any(phrase in user_message for phrase in ["switch", "change", "different", "not this", "wellness", "rehab"]):
+        logger.info(f"therapy_agent: Detected potential intent shift for user_id={user_id}")
+        response = "It sounds like you might want to explore something different—should I hand you back to the main chat agent to pivot?"
         return {
             "messages": state["messages"] + [{"role": "assistant", "content": response, "agent_name": "personalized_therapy_agent"}],
             "user_id": user_id,
@@ -592,50 +637,37 @@ def therapy_agent(state: AgentState) -> AgentState:
             "context": context
         }
 
-    try:
-        user_data = get_user_data(user_id)
-    except Exception as e:
-        logger.error(f"therapy_agent: Failed to get user data for user_id={user_id}: {str(e)}", exc_info=True)
-        raise
-
-    conversation_history = "\n".join([f"{m['role']}: {m['content']}" for m in state["messages"][-5:]])
-    
-    messages = [{
-        "role": "user",
-        "content": f"User History: {user_data}\nRecent Conversation:\n{conversation_history}\nCurrent Message: {user_message}"
-    }]
-    
-    response = invoke_azure_openai(messages, system_prompt)
-
-    # Generate therapy recommendation
+    # Generate a concise recommendation as a summary
+    recommendation_prompt = f"Based on this:\n{full_context}\nProvide a concise, actionable therapy recommendation (1-2 sentences)."
     recommendation = invoke_azure_openai(
-        [{"role": "user", "content": f"Based on this conversation:\n{conversation_history}\nProvide a concise therapy recommendation."}],
-        system_prompt
+        [{"role": "user", "content": recommendation_prompt}],
+        "Summarize a therapy recommendation."
     )
 
     # Store the therapy plan
     try:
-        store_therapy_plan(user_id, response, recommendation)
-        logger.info(f"Therapy plan stored for user {user_id}")
+        store_therapy_plan(user_id, therapy_plan, recommendation)
+        logger.info(f"therapy_agent: Therapy plan stored for user_id={user_id}")
     except Exception as e:
         logger.error(f"therapy_agent: Failed to store therapy plan for user_id={user_id}: {str(e)}", exc_info=True)
-        raise
+        therapy_plan += "\n\n(Note: We hit a snag saving this plan—our team’s on it.)"
 
-    # Send email with improved error handling
+    # Send email with fallback
     email_sent = send_therapy_recommendation_email(user_id, state["messages"], recommendation)
-    
-    # Add email status to response
     if not email_sent:
-        response += "\n\nNote: There was an issue sending the recommendation to the therapist. Our team has been notified."
+        therapy_plan += "\n\nNote: Couldn’t send the plan to the therapist—our team’s been alerted."
     else:
-        response += "\n\nI've sent your therapy plan to our therapist for review."
+        therapy_plan += "\n\nYour plan’s been sent to our therapist for a look."
 
-    # Check if follow-up needed
-    follow_up_needed = "Would you like to discuss this plan further?" in response
+    # Decide next steps intuitively
+    follow_up_needed = any(phrase in therapy_response.lower() for phrase in ["discuss", "follow up", "what do you think", "let me know"])
     next_agent = "personalized_therapy_agent" if follow_up_needed else None
 
+    # Combine response for the user
+    full_response = f"{user_message_response}\n\n{therapy_plan}"
+
     return {
-        "messages": state["messages"] + [{"role": "assistant", "content": response, "agent_name": "personalized_therapy_agent"}],
+        "messages": state["messages"] + [{"role": "assistant", "content": full_response, "agent_name": "personalized_therapy_agent"}],
         "user_id": user_id,
         "next_agent": next_agent,
         "context": context

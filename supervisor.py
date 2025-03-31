@@ -226,7 +226,7 @@ def provide_therapy(condition: str, user_id: str = None, chat_history: list = No
 
     # Enhanced email with chat history and insights
     therapy_plan_text = f"""
-Subject: Therapy Recommendation for {user_name}
+Subject: Therapy Recommendation for {user_name},
 
 Dear Therapist,
 
@@ -740,7 +740,7 @@ def chat():
 @app.route("/welcome", methods=["POST"])
 def welcome():
     logger.info("Welcome endpoint called")
-    return jsonify({"response": "Welcome to SoulSync!"})
+    return jsonify({"response": "Welcome to SoulSync! Your mental health companion"})
 
 if __name__ == "__main__":
     logger.info("Starting SoulSync application...")

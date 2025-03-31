@@ -95,12 +95,13 @@ body::before {
 .chat-message {
     background: var(--user-bg);
     color: var(--user-text);
-    padding: 12px 16px;
-    border-radius: 16px;
-    margin: 8px 0;
+    padding: 14px; /* Increased padding */
+    border-radius: 18px;
+    margin: 12px 0; /* Increased margin for spacing */
     max-width: 75%;
     align-self: flex-end;
-    font-size: 14px;
+    font-size: 16px;
+    line-height: 1.4; /* Increased line spacing */
     transition: var(--transition);
     animation: fadeIn 0.3s ease-in-out;
 }
@@ -108,12 +109,13 @@ body::before {
 .agent-message {
     background: var(--agent-bg);
     color: #333;
-    padding: 12px 16px;
-    border-radius: 16px;
-    margin: 8px 0;
+    padding: 14px; /* More padding for readability */
+    border-radius: 18px;
+    margin: 12px 0; /* More space between messages */
     max-width: 75%;
     align-self: flex-start;
-    font-size: 14px;
+    font-size: 16px;
+    line-height: 1.8; /* Increased spacing */
     transition: var(--transition);
     animation: fadeIn 0.3s ease-in-out;
 }
@@ -121,6 +123,7 @@ body::before {
 /* Input Area */
 .chat-input {
     display: flex;
+    align-items: center; /* Vertically center the elements */
     padding: 10px;
     background: #f9f9f9;
     border-top: 1px solid #ddd;
@@ -157,7 +160,82 @@ body::before {
     background: var(--primary-hover);
 }
 
-/* Fade In Animation */
+/* Upload Button (Plus Icon) */
+.upload-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%; /* Circular button */
+    cursor: pointer;
+    margin-right: 10px; /* Space between the plus icon and the input field */
+    transition: var(--transition);
+    position: relative;
+}
+
+.upload-btn:hover {
+    background: var(--primary-hover);
+}
+
+.plus-icon {
+    font-size: 24px;
+    font-weight: 600;
+}
+
+/* Tooltip Animation */
+.upload-btn:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    animation: fadeInTooltip 0.3s forwards;
+}
+
+@keyframes fadeInTooltip {
+    to {
+        opacity: 1;
+    }
+}
+
+/* Loading State for Upload Button */
+.upload-btn.loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.upload-btn.loading .plus-icon {
+    display: none;
+}
+
+.upload-btn.loading::before {
+    content: "";
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid white;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Fade In Animation for Messages */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -195,30 +273,13 @@ body::before {
         font-size: 18px;
         padding: 12px;
     }
-}
-/* Chat Messages */
-.chat-message {
-    background: var(--user-bg);
-    color: var(--user-text);
-    padding: 14px; /* Increased padding */
-    border-radius: 18px;
-    margin: 12px 0; /* Increased margin for spacing */
-    max-width: 75%;
-    align-self: flex-end;
-    font-size: 16px;
-    line-height: 1.4; /* Increased line spacing */
-    transition: var(--transition);
-}
 
-.agent-message {
-    background: var(--agent-bg);
-    color: #333;
-    padding: 14px; /* More padding for readability */
-    border-radius: 18px;
-    margin: 12px 0; /* More space between messages */
-    max-width: 75%;
-    align-self: flex-start;
-    font-size: 16px;
-    line-height: 1.8; /* Increased spacing */
-    transition: var(--transition);
+    .upload-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .plus-icon {
+        font-size: 20px;
+    }
 }
