@@ -9,6 +9,10 @@ from dotenv import load_dotenv
 from azure.cosmos import CosmosClient
 from datetime import datetime, timezone
 import uuid
+import json
+import base64
+from datetime import datetime, timezone
+from cryptography.fernet import Fernet
 import logging
 import smtplib
 from email.mime.text import MIMEText
@@ -33,6 +37,7 @@ COSMOS_DB_ENDPOINT = os.getenv("COSMOS_DB_ENDPOINT")
 COSMOS_DB_KEY = os.getenv("COSMOS_DB_KEY")
 COSMOS_DB_NAME = os.getenv("COSMOS_DB_NAME")
 COSMOS_DB_CONTAINER = os.getenv("COSMOS_DB_CONTAINER")
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 
 if not all([COSMOS_DB_ENDPOINT, COSMOS_DB_KEY, COSMOS_DB_NAME, COSMOS_DB_CONTAINER]):
     raise ValueError("Missing required Cosmos DB environment variables")
@@ -48,6 +53,19 @@ model = AzureChatOpenAI(
     api_version="2023-05-15",
     deployment_name="gpt-4o-mini"
 )
+
+cipher_suite= Fernet(ENCRYPTION_KEY.encode())
+
+def encrypt_data(data: dict) -> str:
+    """Encrypt dictionary data using Fernet."""
+    json_data = json.dumps(data).encode()
+    encrypted_data = cipher_suite.encrypt(json_data)
+    return encrypted_data.decode()
+
+def decrypt_data(encrypted_data: str) -> dict:
+    """Decrypt Fernet-encrypted data back to dictionary."""
+    decrypted_data = cipher_suite.decrypt(encrypted_data.encode())
+    return json.loads(decrypted_data.decode())
 
 def invoke_azure_openai(messages, system_prompt, max_retries=3):
     """Invoke Azure OpenAI API with error handling and rate limiting."""
@@ -71,40 +89,63 @@ def invoke_azure_openai(messages, system_prompt, max_retries=3):
 
 # Cosmos DB Helper Functions
 def get_user_data(user_id: str) -> dict:
-    """Retrieve user data from Cosmos DB."""
+    """Retrieve and decrypt user data from Cosmos DB."""
     try:
         query = "SELECT * FROM c WHERE c.user_id = @user_id"
         parameters = [{"name": "@user_id", "value": user_id}]
         user_docs = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
+
         if not user_docs:
             user_doc = {
                 "id": str(uuid.uuid4()),
                 "user_id": user_id,
-                "messages": [],
-                "context": {},
+                "messages": encrypt_data([]),  # Encrypt empty list
+                "context": encrypt_data({}),   # Encrypt empty dict
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             container.create_item(user_doc)
             logger.info(f"get_user_data: Created new user_doc for user_id={user_id}")
-            return user_doc
-        logger.debug(f"get_user_data: Retrieved user_doc for user_id={user_id}: {user_docs[0]}")
-        return user_docs[0]
+            return {"user_id": user_id, "messages": [], "context": {}}
+
+        user_doc = user_docs[0]
+        decrypted_messages = decrypt_data(user_doc["messages"])
+        decrypted_context = decrypt_data(user_doc["context"])
+
+        logger.debug(f"get_user_data: Retrieved user_doc for user_id={user_id}")
+        return {"user_id": user_id, "messages": decrypted_messages, "context": decrypted_context}
+
     except Exception as e:
         logger.error(f"get_user_data: Error for user_id={user_id}: {str(e)}")
         raise
 
+
 def store_user_data(user_id: str, messages: list, context: dict) -> None:
-    """Store or update user data in Cosmos DB."""
+    """Store or update user data in Cosmos DB, ensuring valid input format."""
     try:
+        if not user_id:
+            raise ValueError("Invalid user_id: Cannot be None or empty")
+
         user_data = get_user_data(user_id)
+        user_data["id"] = str(user_id)  # Ensure `id` is a string
         user_data["messages"] = messages
         user_data["context"] = context
-        user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+        # Remove system-generated fields (if present)
+        unwanted_keys = ["_rid", "_self", "_etag", "_attachments", "_ts"]
+        for key in unwanted_keys:
+            user_data.pop(key, None)
+
+        # Log sanitized data
+        logger.info(f"Upserting sanitized user_data: {json.dumps(user_data, indent=2)}")
+
+        # Upsert into Cosmos DB
         container.upsert_item(user_data)
-        logger.debug(f"store_user_data: Stored user data for user_id={user_id}, context={context}")
+
     except Exception as e:
-        logger.error(f"store_user_data: Error for user_id={user_id}: {str(e)}")
+        logger.error(f"store_user_data error for user_id={user_id}: {str(e)}")
         raise
+
+
 
 # Core Functions
 def get_summary(user_input: str) -> str:
@@ -745,6 +786,7 @@ def welcome():
 if __name__ == "__main__":
     logger.info("Starting SoulSync application...")
     app.run(debug=True, host="127.0.0.1", port=5000)
+
 
 # app.py
 # app.py

@@ -4,7 +4,7 @@
 :root {
     --primary-color: #6C63FF; /* Soft Purple */
     --primary-hover: #554FCC;
-    --bg-color: linear-gradient(to bottom, #E3FDFD, #FFE6FA); /* Polite Gradient */
+    --bg-color: linear-gradient(135deg, #D4D3FF 0%, #FFFFFF 100%); /* Clean gradient from light purple to white */
     --agent-bg: #F1F3F5;
     --user-bg: #6C63FF;
     --user-text: #fff;
@@ -31,26 +31,31 @@ body {
     overflow: hidden;
 }
 
-/* Optional Animated Background */
+/* Subtle Background Glow for Depth */
 body::before {
     content: "";
     position: absolute;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 10%, transparent 80%);
-    animation: moveBackground 10s linear infinite;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, rgba(108, 99, 255, 0.2) 0%, transparent 70%);
     z-index: 0;
+    animation: pulseGlow 10s ease-in-out infinite;
 }
 
-@keyframes moveBackground {
+@keyframes pulseGlow {
     0% {
-        transform: translateX(-10%) translateY(-10%);
+        opacity: 0.3;
+        transform: scale(1);
     }
     50% {
-        transform: translateX(10%) translateY(10%);
+        opacity: 0.5;
+        transform: scale(1.05);
     }
     100% {
-        transform: translateX(-10%) translateY(-10%);
+        opacity: 0.3;
+        transform: scale(1);
     }
 }
 
@@ -59,26 +64,85 @@ body::before {
     width: 100%;
     max-width: 800px;
     height: 95vh;
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
     border-radius: var(--border-radius);
-    box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.15);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     position: relative;
     z-index: 1;
+    backdrop-filter: blur(5px);
 }
 
 /* Header */
 .chat-header {
-    background: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color), #8B87FF); /* Gradient for vibrancy */
     color: white;
-    padding: 16px;
+    padding: 20px;
     text-align: center;
-    font-size: 20px;
+    font-size: 28px;
     font-weight: 600;
     border-top-left-radius: var(--border-radius);
     border-top-right-radius: var(--border-radius);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* Shadow for 3D effect */
+    transform: translateZ(20px); /* 3D effect */
+    z-index: 2;
+}
+
+/* 3D Immersive Effect for Header */
+.chat-header::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: linear-gradient(135deg, rgba(108, 99, 255, 0.3), rgba(139, 135, 255, 0.1));
+    z-index: -1;
+    border-radius: var(--border-radius);
+    transform: translateZ(-10px); /* Layered 3D effect */
+    animation: headerGlow 5s ease-in-out infinite;
+}
+
+/* Glowing Animation for Header */
+@keyframes headerGlow {
+    0% {
+        opacity: 0.5;
+        transform: translateZ(-10px) scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateZ(-10px) scale(1.02);
+    }
+    100% {
+        opacity: 0.5;
+        transform: translateZ(-10px) scale(1);
+    }
+}
+
+/* Add a subtle shine effect to the SoulSync text */
+.chat-header h1 {
+    margin: 0;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    position: relative;
+    animation: textShine 3s infinite;
+}
+
+@keyframes textShine {
+    0% {
+        text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+    50% {
+        text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), 0 0 20px rgba(255, 255, 255, 0.8);
+    }
+    100% {
+        text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), 0 0 10px rgba(255, 255, 255, 0.5);
+    }
 }
 
 /* Chat Box */
@@ -95,35 +159,67 @@ body::before {
 .chat-message {
     background: var(--user-bg);
     color: var(--user-text);
-    padding: 14px; /* Increased padding */
+    padding: 14px;
     border-radius: 18px;
-    margin: 12px 0; /* Increased margin for spacing */
+    margin: 12px 0;
     max-width: 75%;
     align-self: flex-end;
     font-size: 16px;
-    line-height: 1.4; /* Increased line spacing */
+    line-height: 1.4;
     transition: var(--transition);
     animation: fadeIn 0.3s ease-in-out;
 }
 
 .agent-message {
-    background: var(--agent-bg);
+    background: linear-gradient(135deg, #F1F3F5, #E8ECEF);
     color: #333;
-    padding: 14px; /* More padding for readability */
+    padding: 16px;
     border-radius: 18px;
-    margin: 12px 0; /* More space between messages */
+    margin: 12px 0;
     max-width: 75%;
     align-self: flex-start;
-    font-size: 16px;
-    line-height: 1.8; /* Increased spacing */
+    font-size: 14px;
+    line-height: 1.6;
     transition: var(--transition);
     animation: fadeIn 0.3s ease-in-out;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid var(--primary-color);
+}
+
+/* Style the agent name */
+.agent-name {
+    font-weight: 600;
+    color: var(--primary-color);
+    display: block;
+    margin-bottom: 5px;
+    font-size: 15px;
+}
+
+/* Highlight bullet points in agent messages */
+.agent-message ul {
+    list-style: none;
+    padding-left: 15px;
+}
+
+.agent-message ul li {
+    position: relative;
+    margin-bottom: 8px;
+    padding-left: 20px;
+}
+
+.agent-message ul li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--primary-color);
+    font-size: 1.2em;
+    line-height: 1;
 }
 
 /* Input Area */
 .chat-input {
     display: flex;
-    align-items: center; /* Vertically center the elements */
+    align-items: center;
     padding: 10px;
     background: #f9f9f9;
     border-top: 1px solid #ddd;
@@ -160,6 +256,22 @@ body::before {
     background: var(--primary-hover);
 }
 
+/* Logout Button */
+.logout-btn {
+    background: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.logout-btn:hover {
+    background: #e63939;
+}
+
 /* Upload Button (Plus Icon) */
 .upload-btn {
     display: flex;
@@ -169,9 +281,9 @@ body::before {
     height: 40px;
     background: var(--primary-color);
     color: white;
-    border-radius: 50%; /* Circular button */
+    border-radius: 50%;
     cursor: pointer;
-    margin-right: 10px; /* Space between the plus icon and the input field */
+    margin-right: 10px;
     transition: var(--transition);
     position: relative;
 }
@@ -277,9 +389,5 @@ body::before {
     .upload-btn {
         width: 36px;
         height: 36px;
-    }
-
-    .plus-icon {
-        font-size: 20px;
     }
 }
