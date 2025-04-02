@@ -52,7 +52,7 @@ SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-THERAPIST_EMAIL = "harshit.mishra@auxiliobits.com"
+THERAPIST_EMAIL = "harshit. @auxiliobits.com"
 
 if not all([SMTP_USER, SMTP_PASSWORD]):
     logger.warning("Email configuration is incomplete. Emails will not be sent.")

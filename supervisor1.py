@@ -14,6 +14,7 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 import time
+from werkzeug.utils import secure_filename
 import random
 import json
 from cryptography.fernet import Fernet
@@ -658,28 +659,40 @@ try:
         model=model,
         prompt=
         """You are the Supervisor Agent of SoulSync AI, responsible for guiding users in mental health, therapy, and post-rehab support. 
-Your job is to:
-1. **Recall memory** from previous interactions using LangChain's memory tools.
-2. **Decide which expert** should handle the request (your options: wellness_check_expert, therapy_expert, post_rehab_expert).
-3. **Generate or retrieve** the response in a warm, empathetic manner.
+
+**Your Job:**
+1. **Identify the Patient:** The patient's name is provided in the context as `patient_name` (e.g., "Harshit   "). Use this name in all greetings and responses to personalize the interaction.
+2. **Retrieve PDF Context:** The patient's health and emotional context is provided in `context["pdf_context"]`. Use this context to tailor your responses, mentioning it naturally when relevant.
+3. **Personalized Greeting:** Always greet the patient by their name in the first message of an interaction (e.g., "Hello Harshit   !"). Incorporate the PDF context if relevant (e.g., "I see from your recent report that your health state is Stable.").
+4. **Recall Memory:** Use LangChain's memory tools to recall previous interactions and emotional states.
+5. **Decide Which Expert:** Determine which expert should handle the request (options: `wellness_check_expert`, `therapy_expert`, `post_rehab_expert`).
+6. **Generate or Retrieve Response:** Provide a warm, empathetic response based on the patient's history, current query, and PDF context.
 
 **Rules:**
-- If the query is therapy-related, forward it to `therapy_expert`.
-- If it's about emotional wellness, use past memory to assess risk levels.
-- If it's post-rehab related, act as `post_rehab_expert` and guide them.
+- Always start the interaction by greeting the patient with their name (e.g., "Hello Harshit   ! I'm here to assist you.").
+- Use the PDF context (`context["pdf_context"]`) to inform your responses. Mention the `health_state` or `emotional_state` if relevant to the conversation, but only if they are not "Unknown".
+- If the query is therapy-related (e.g., contains "therapy", "therapist", "counseling"), forward it to `therapy_expert`.
+- If it's about emotional wellness (e.g., contains "stress", "anxious", "sad"), use past memory and PDF context to assess risk levels and forward to `wellness_check_expert`.
+- If it's post-rehab related (e.g., contains "rehab", "recovery", "relapse"), act as `post_rehab_expert` and guide them, using the PDF context if relevant.
+- Use the patient's name naturally in responses to build rapport (e.g., "Harshit   , I see you've been feeling stressed lately, and your recent report mentions an Anxious emotional state. Let’s work on that.").
 
-### **How to Respond:**
-1. If greeting → _Welcome them and recall memory._
-2. If off-topic → _Gently redirect them to mental health topics._
-3. If user agrees to a transfer → _Role-play as the expert and respond._
-4.Concise & Clear – No long explanations, just direct and supportive replies.
-5.One Thought Per Message – Avoid overloading users with too much info at once.
-6.Soft & Encouraging – Keep the tone warm but not overly wordy.
-4. Always acknowledge past user context when responding.
-5. If unsure, ask for more details or clarify the user's needs.
-6. Use the memory tools to store and retrieve user preferences or past emotional states.
-7. Use the `create_manage_memory_tool` to store key insights (e.g., "User feels stressed often").
-8. Use the `create_search_memory_tool` to check past interactions if relevant.""",
+**How to Respond:**
+1. **Greeting:** Welcome the patient by their name and incorporate PDF context if relevant (e.g., "Hello Harshit   ! I see from your recent report that your health state is Stable. How are you feeling today?").
+2. **Off-Topic:** Gently redirect to mental health topics using their name and PDF context if applicable (e.g., "Harshit   , I’d love to help with your mental health needs. Your recent report mentions an Anxious emotional state—would you like to talk about that?").
+3. **Expert Transfer:** If transferring to an expert, inform the patient using their name (e.g., "Harshit   , I’m transferring you to our therapy expert. Let’s get started.").
+4. **Concise & Clear:** Provide direct, supportive replies without long explanations.
+5. **One Thought Per Message:** Avoid overloading users with too much info at once.
+6. **Soft & Encouraging:** Maintain a warm, empathetic tone (e.g., "Harshit   , I’m here for you. Let’s take this one step at a time.").
+7. **Acknowledge Context:** Reference past user context and PDF context when responding (e.g., "Harshit   , I remember you mentioned feeling anxious last week, and your report also notes an Anxious emotional state. How are you feeling now?").
+8. **Clarify if Unsure:** Ask for more details if the query is unclear, using their name and PDF context if relevant (e.g., "Harshit   , can you tell me more about how you’re feeling? Your recent report mentions a Stable health state.").
+9. **Memory Tools:** Use `create_manage_memory_tool` to store key insights (e.g., "User feels stressed often") and `create_search_memory_tool` to check past interactions if relevant.
+
+**Example Responses:**
+- Greeting: "Hello Harshit ! I see from your recent report that your health state is Stable and your emotional state is Anxious. How are you feeling today?"
+- Redirecting: "Harshit , I’d love to help with your mental health needs. Your recent report mentions an Anxious emotional state—would you like to talk about how you’re feeling?"
+- Using Context: "Harshit , I see you’ve been feeling stressed lately, and your recent report also notes an Anxious emotional state. Let’s work on that together. How can I assist you today?"
+- Clarification: "Harshit , I’m not sure I fully understand—can you tell me more about what’s been going on? Your report mentions a Stable health state, which is a good sign."
+""",
         supervisor_name="supervisor",
         include_agent_name="inline",
         output_mode="full_history",
@@ -820,7 +833,7 @@ def get_chat_history():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    """Handle user chat interactions with AI agents.
+    """Handle user chat interactions with AI agents, ensuring the patient's name is used in greetings.
 
     Returns:
         Response: JSON response with decrypted AI response, user_id, and agent used, or error.
@@ -835,8 +848,10 @@ def chat():
 
     try:
         user_data = get_user_data(user_id)
+        patient_name = f"{user_data.get('firstName', '')}".strip() or "User"
         messages = user_data.get("messages", [])
         context = user_data.get("context", {})
+        context["patient_name"] = patient_name  # Add patient name to context
         logger.debug(f"Initial context for user_id={user_id}: {context}")
 
         encrypted_user_message = encrypt_message(user_message)
@@ -973,7 +988,7 @@ def chat():
                 elif hasattr(last_message, "content") and last_message.content:
                     if user_message.lower() in ["hello", "hi", "hey", "hii"]:
                         greeting_prompt = f"""
-                        The user said '{user_message}'. Generate a warm, inviting response encouraging them to share their feelings or concerns about mental health. Chat history: {decrypted_messages}.
+                        The user said '{user_message}'. The patient's name is '{patient_name}'. Generate a warm, inviting response encouraging them to share their feelings or concerns about mental health, starting with a greeting using their name (e.g., "Hello {patient_name}!"). Chat history: {decrypted_messages}.
                         """
                         response = encrypt_message(invoke_azure_openai([{"role": "user", "content": greeting_prompt}], "Generate a greeting."))
                         agent_used = "supervisor"
@@ -981,7 +996,7 @@ def chat():
                         response = encrypt_message(last_message.content)
                         agent_used = getattr(last_message, "name", "supervisor")
                 else:
-                    response = encrypt_message("I’m having a little trouble here—could you tell me more about what’s on your mind?")
+                    response = encrypt_message(f"{patient_name}, I’m having a little trouble here—could you tell me more about what’s on your mind?")
                     agent_used = "supervisor"
 
         messages.append({
@@ -998,17 +1013,76 @@ def chat():
         logger.error(f"Chat processing failed for user_id={user_id}: {str(e)}")
         return jsonify({"error": f"Chat processing failed: {str(e)}"}), 500
 
+@app.route("/upload_pdf", methods=["POST"])
+def upload_pdf():
+    """Upload a PDF for a user and store it in Cosmos DB.
+
+    Returns:
+        Response: JSON response with status message or error.
+    """
+    user_id = request.form.get("user_id")
+    if not user_id:
+        logger.warning("Upload PDF failed: Missing user_id")
+        return jsonify({"error": "Missing user_id"}), 400
+
+    if "pdf_file" not in request.files:
+        logger.warning("Upload PDF failed: No file part in request")
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files["pdf_file"]
+    if file.filename == "":
+        logger.warning("Upload PDF failed: No selected file")
+        return jsonify({"error": "No selected file"}), 400
+
+    if file and file.filename.endswith(".pdf"):
+        try:
+            # Read the PDF file as binary and encode it as base64
+            pdf_binary = file.read()
+            pdf_base64 = base64.b64encode(pdf_binary).decode("utf-8")
+
+            # Fetch the user document from Cosmos DB
+            user_data = get_user_data(user_id)
+            if not user_data:
+                logger.warning(f"Upload PDF failed: User not found for user_id={user_id}")
+                return jsonify({"error": "User not found"}), 404
+
+            # Store the PDF data in the user document
+            user_data["pdf_data"] = pdf_base64
+            user_data["pdf_filename"] = secure_filename(file.filename)
+            user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+            # Update the user document in Cosmos DB
+            container.upsert_item(user_data)
+            logger.info(f"PDF uploaded and stored for user_id={user_id}, filename={file.filename}")
+            return jsonify({"message": f"PDF {file.filename} uploaded successfully for user {user_id}"}), 200
+        except Exception as e:
+            logger.error(f"Error uploading PDF for user_id={user_id}: {str(e)}")
+            return jsonify({"error": f"Failed to upload PDF: {str(e)}"}), 500
+    else:
+        logger.warning("Upload PDF failed: Invalid file format")
+        return jsonify({"error": "Invalid file format, only PDFs are allowed"}), 400
 
 @app.route("/welcome", methods=["POST"])
 def welcome():
-    """Provide a welcome message to new users.
+    """Provide a welcome message to new users, personalized with their name.
 
     Returns:
         Response: JSON response with decrypted welcome message.
     """
     logger.info("Welcome endpoint called")
-    response = encrypt_message("Welcome to SoulSync! Your mental health companion")
-    return jsonify({"response": decrypt_message(response)})
+    data = request.get_json()
+    user_id = data.get("user_id", "")
+    if not user_id:
+        logger.warning("Welcome request failed: Missing user_id")
+        return jsonify({"error": "Missing user_id"}), 400
+
+    try:
+        response = encrypt_message(f"Welcome to SoulSync! Your mental health companion")
+        logger.info(f"Welcome message sent for user_id={user_id}")
+        return jsonify({"response": decrypt_message(response)}), 200
+    except Exception as e:
+        logger.error(f"Error in welcome endpoint for user_id={user_id}: {str(e)}")
+        return jsonify({"error": "Failed to generate welcome message"}), 500
 
 if __name__ == "__main__":
     logger.info("Starting SoulSync application...")
